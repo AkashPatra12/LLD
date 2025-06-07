@@ -1,0 +1,5 @@
+Sliding window counter
+
+time_stamp
+1.00---88reqs---2.00---12reqs---3.00
+  1.15--------------2.15
