@@ -134,3 +134,57 @@ if __name__ == "__main__":
     for dir in directions:
         game.input_handler.on_input(dir)
         game.update()
+
+
+import threading
+import time
+
+class GameServerInterface(ABC):
+    @abstractmethod
+    def sync_state(self, game_state):
+        pass
+
+    @abstractmethod
+    def fetch_remote_moves(self):
+        pass
+
+class MockGameServer(GameServerInterface):
+    def __init__(self):
+        self.state = None
+        self.input_queue = deque()
+        self.lock = threading.Lock()
+
+    # def sync_state(self, game_state):
+    #     with self.lock:
+    #         self.state = game_state
+
+    # def fetch_remote_moves(self):
+    #     with self.lock:
+    #         if self.input_queue:
+    #             return self.input_queue.popleft()
+    #         return None
+
+    def add_input(self, direction):
+        with self.lock:
+            self.input_queue.append(direction)
+
+# --- Example Usage ---
+
+def run_game():
+    game = SnakeGameEngine()
+    game.start_game(steps=10)
+
+# if __name__ == "__main__":
+#     server = MockGameServer()
+#     server.add_input((1, 0))  # right
+#     server.add_input((0, 1))  # down
+#     server.add_input((-1, 0))  # left
+#
+#     game_thread = threading.Thread(target=run_game)
+#     game_thread.start()
+#
+#     # Simulate external input
+#     time.sleep(2)
+#     server.add_input((0, -1))  # up
+#     server.add_input((1, 0))   # right
+#     game_thread.join()

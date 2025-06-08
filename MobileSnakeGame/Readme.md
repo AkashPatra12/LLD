@@ -1,6 +1,6 @@
-# 🐍 Snake Game – Single-Threaded Version with SOLID & Design Patterns
+# 🐍 Snake Game – Single-Threaded Version with Game Completion Flow
 
-This project presents a clean and modular single-threaded implementation of the classic Snake Game using **SOLID principles** and **object-oriented design patterns**. It runs in a console environment and supports food consumption, rendering, and directional input handling.
+This project presents a clean and modular single-threaded implementation of the classic Snake Game using **SOLID principles** and **object-oriented design patterns**. It supports food consumption, rendering, directional input handling, and a defined game completion flow.
 
 ---
 
@@ -10,22 +10,41 @@ This project presents a clean and modular single-threaded implementation of the 
 * The snake grows after consuming food.
 * The system must be extensible to support multiple food types or tiles.
 * The design should log key game events.
-* No need for concurrency or threading.
-* Built with maintainability and testability in mind.
+* The game should terminate cleanly after a defined condition (e.g., fixed steps).
 
 Environment:
 
 * Python 3.7+
-* No external dependencies (only uses Python standard library)
+* No external dependencies (standard library only)
 
 ---
+
+## 🕰️ What is a Tick?
+
+A tick is like a time step. During each tick, the following happens:
+
+* Input is processed (e.g., direction change).
+* Game state is updated (e.g., snake moves).
+* Collisions are checked (e.g., food or wall).
+* Rendering is done (updated board is displayed).
+* The engine waits or immediately proceeds to the next tick (depending on timing logic, if any).
 
 ## 🔄 High-Level Game Flow
 
 ```
 Main Thread
  └── Runs SnakeGameEngine.start_game()
-       └── In each loop tick: handle input → update state → render board
+       └── Loop (for N ticks):
+             ├── Handle directional input via InputHandler
+             ├── Move the snake (Snake.move)
+             ├── Wrap snake position if needed (Board.wrap_position)
+             ├── Check for food collision
+             │     ├── If food is eaten:
+             │     │     ├── Log the event
+             │     │     ├── Grow the snake
+             │     │     └── Spawn new food (FoodSpawner)
+             ├── Render the updated board (Renderer)
+             └── Check if termination condition met
 ```
 
 ---
@@ -36,29 +55,30 @@ Main Thread
 
 * Instantiate `SnakeGameEngine`.
 * Components initialized: `Board`, `Snake`, `FoodSpawner`, `Renderer`, `GameLogger`, `InputHandler`.
-* Food is spawned randomly.
+* Food is spawned randomly using strategy.
 
-### 2. Game Loop (start\_game)
+### 2. Game Loop (`start_game`)
 
-* Runs for a fixed number of ticks.
-* At each tick:
+* Runs for a defined number of ticks.
+* Each tick:
 
-  * InputHandler updates direction.
-  * Snake moves in the current direction.
-  * Board wraps position.
-  * Collision with food is checked.
-  * Renderer prints game state.
+  * Accept directional input and update snake direction.
+  * Move snake and wrap position.
+  * If snake eats food:
 
----
+    * Log event
+    * Grow snake
+    * Spawn new food
+  * Render board with snake and food
+  * Continue until tick limit is reached
 
-## 📊 Features
+### 3. Game Completion
 
-* Grid-based movement with board wrapping.
-* Direction changes via input handler.
-* Snake grows on consuming food.
-* Food appears in random positions.
-* Console rendering.
-* Logging events like "food eaten".
+* After the final tick:
+
+  * Game loop exits cleanly
+  * Final state is rendered (optional)
+  * Can be extended to include: score summary, reset option, or collision-based termination
 
 ---
 
@@ -73,7 +93,7 @@ Main Thread
 
 ---
 
-## 📏 UML Overview
+## 🧱 UML Overview
 
 ```text
 +---------------------+
@@ -141,20 +161,7 @@ python snake_game_lld.py
 
 * The board updates after each directional input.
 * Food is consumed and logged.
-* Game renders new snake and food positions after each move.
-
----
-
-## 🔹 Example Gameplay Tick
-
-1. User input: right
-2. Snake moves one cell to the right.
-3. If snake eats food:
-
-   * Grows in size
-   * New food spawned
-   * Logs event
-4. Board is printed with current snake and food positions.
+* Game ends after configured number of ticks.
 
 ---
 
@@ -165,6 +172,7 @@ python snake_game_lld.py
 * ✅ Food spawn in empty cell
 * ✅ Input handler callback working
 * ✅ Food collision detection and snake growth
+* ✅ Game completes after defined steps
 
 ---
 
@@ -173,6 +181,7 @@ python snake_game_lld.py
 * Add different food types using `IFoodStrategy`
 * Add `Tile` abstractions for obstacles or power-ups
 * Add scoring, themes, or UI with minimal changes
+* Add game over on self-collision or time-based score
 
 ---
 
