@@ -9,14 +9,14 @@ class RateLimiter(ABC):
         pass
 
 class FixedWindowRateLimiter(RateLimiter):
-    def __init__(self, max_requests: int, window_size_in_millis: int):
+    def __init__(self, max_requests: int, window_size: int):
         self.max_requests = max_requests
-        self.window_size_in_millis = window_size_in_millis
+        self.window_size_in_millis = window_size
         self.request_counts = {}
         self.window_start_times = {}
 
     def allow_request(self, client_id: str) -> bool:
-        current_time = int(time.time() * 1000)
+        current_time = int(time.time())
         self.window_start_times.setdefault(client_id, current_time)
         self.request_counts.setdefault(client_id, 0)
 
@@ -37,7 +37,7 @@ class SlidingWindowRateLimiter(RateLimiter):
         self.request_timestamps = {}
 
     def allow_request(self, client_id: str) -> bool:
-        current_time = int(time.time() * 1000)
+        current_time = int(time.time())
         self.request_timestamps.setdefault(client_id, deque())
 
         timestamps = self.request_timestamps[client_id]
@@ -51,35 +51,35 @@ class SlidingWindowRateLimiter(RateLimiter):
 
 class RateLimiterFactory:
     @staticmethod
-    def create_rate_limiter(type: str, max_requests: int, window_size_in_millis: int) -> RateLimiter:
+    def create_rate_limiter(type: str, max_requests: int, window_size: int) -> RateLimiter:
         if type == "fixed":
-            return FixedWindowRateLimiter(max_requests, window_size_in_millis)
+            return FixedWindowRateLimiter(max_requests, window_size)
         elif type == "sliding":
-            return SlidingWindowRateLimiter(max_requests, window_size_in_millis)
+            return SlidingWindowRateLimiter(max_requests, window_size)
         else:
             raise ValueError("Unknown rate limiter type")
-
-class RateLimiterManager:
-    _instance = None
-    _lock = Lock()
-
-    def __init__(self):
-        self.rate_limiter = RateLimiterFactory.create_rate_limiter("fixed", 100, 60000)
-
-    @classmethod
-    def get_instance(cls):
-        if not cls._instance:
-            with cls._lock:
-                if not cls._instance:
-                    cls._instance = cls()
-        return cls._instance
-
-    def allow_request(self, client_id: str) -> bool:
-        return self.rate_limiter.allow_request(client_id)
+#
+# class RateLimiterManager:
+#     _instance = None
+#     _lock = Lock()
+#
+#     def __init__(self):
+#         self.rate_limiter = RateLimiterFactory.create_rate_limiter("fixed", 100, 60000)
+#
+#     @classmethod
+#     def get_instance(cls):
+#         if not cls._instance:
+#             with cls._lock:
+#                 if not cls._instance:
+#                     cls._instance = cls()
+#         return cls._instance
+#
+#     def allow_request(self, client_id: str) -> bool:
+#         return self.rate_limiter.allow_request(client_id)
 
 if __name__ == "__main__":
-    fixed_window_rate_limiter = RateLimiterFactory.create_rate_limiter("fixed", 10, 60000)
-    sliding_window_rate_limiter = RateLimiterFactory.create_rate_limiter("sliding", 10, 60000)
+    fixed_window_rate_limiter = RateLimiterFactory.create_rate_limiter("fixed", 10, 60)
+    sliding_window_rate_limiter = RateLimiterFactory.create_rate_limiter("sliding", 10, 60)
 
     print("Fixed Window Rate Limiter:")
     for _ in range(12):
