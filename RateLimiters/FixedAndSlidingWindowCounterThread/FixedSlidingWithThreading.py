@@ -3,11 +3,13 @@ import time
 from collections import deque
 from threading import Lock, Thread
 
+# Abstract Interface
 class RateLimiter(ABC):
     @abstractmethod
     def allow_request(self, client_id: str) -> bool:
         pass
 
+# 1. Fixed Window Rate Limiter
 class FixedWindowRateLimiter(RateLimiter):
     def __init__(self, max_requests: int, window_size: int):
         self.max_requests = max_requests
@@ -32,6 +34,7 @@ class FixedWindowRateLimiter(RateLimiter):
                 return True
             return False
 
+# 2. Sliding Window Log Rate Limiter
 class SlidingWindowRateLimiter(RateLimiter):
     def __init__(self, max_requests: int, window_size: int):
         self.max_requests = max_requests
@@ -53,6 +56,7 @@ class SlidingWindowRateLimiter(RateLimiter):
                 return True
             return False
 
+# 3. Sliding Window Counter Rate Limiter
 class SlidingWindowCounterRateLimiter(RateLimiter):
     def __init__(self, max_requests: int, window_size: int):
         self.max_requests = max_requests
@@ -82,6 +86,48 @@ class SlidingWindowCounterRateLimiter(RateLimiter):
                 return True
             return False
 
+# 4. Leaky Bucket Rate Limiter
+class LeakyBucketRateLimiter(RateLimiter):
+    def __init__(self, capacity, leak_rate):
+        self.capacity = capacity
+        self.leak_rate = leak_rate
+        self.water = 0
+        self.last_time = time.time()
+        self.lock = Lock()
+
+    def allow_request(self, client_id: str) -> bool:
+        with self.lock:
+            now = time.time()
+            elapsed = now - self.last_time
+            self.last_time = now
+            leaked = elapsed * self.leak_rate
+            self.water = max(0, self.water - leaked)
+            if self.water < self.capacity:
+                self.water += 1
+                return True
+            return False
+
+# 5. Token Bucket Rate Limiter
+class TokenBucketRateLimiter(RateLimiter):
+    def __init__(self, rate, capacity):
+        self.rate = rate
+        self.capacity = capacity
+        self.tokens = capacity
+        self.last_time = time.time()
+        self.lock = Lock()
+
+    def allow_request(self, client_id: str) -> bool:
+        with self.lock:
+            now = time.time()
+            elapsed = now - self.last_time
+            self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
+            self.last_time = now
+            if self.tokens >= 1:
+                self.tokens -= 1
+                return True
+            return False
+
+# Factory Pattern
 class RateLimiterFactory:
     @staticmethod
     def create_rate_limiter(type: str, max_requests: int, window_size: int) -> RateLimiter:
@@ -91,48 +137,36 @@ class RateLimiterFactory:
             return SlidingWindowRateLimiter(max_requests, window_size)
         elif type == "sliding_counter":
             return SlidingWindowCounterRateLimiter(max_requests, window_size)
+        elif type == "leaky":
+            return LeakyBucketRateLimiter(max_requests, window_size)
+        elif type == "token":
+            return TokenBucketRateLimiter(max_requests, window_size)
         else:
             raise ValueError("Unknown rate limiter type")
 
-
-# Thread handling demonstration
+# Threading Simulation
 def simulate_requests(rate_limiter, client_id, request_count):
     for _ in range(request_count):
         allowed = rate_limiter.allow_request(client_id)
         print(f"Client: {client_id}, Allowed: {allowed}")
         time.sleep(0.1)
 
+# Main Entry
 if __name__ == "__main__":
-    fixed_limiter = RateLimiterFactory.create_rate_limiter("fixed", 5, 5)
-    sliding_limiter = RateLimiterFactory.create_rate_limiter("sliding", 5, 5)
-    sliding_counter_limiter = RateLimiterFactory.create_rate_limiter("sliding_counter", 5, 5)
+    limiters = {
+        "fixed": RateLimiterFactory.create_rate_limiter("fixed", 5, 5),
+        "sliding": RateLimiterFactory.create_rate_limiter("sliding", 5, 5),
+        "sliding_counter": RateLimiterFactory.create_rate_limiter("sliding_counter", 5, 5),
+        "leaky": RateLimiterFactory.create_rate_limiter("leaky", 5, 1),
+        "token": RateLimiterFactory.create_rate_limiter("token", 1, 5)
+    }
 
-    print("Fixed Window Rate Limiter with Threads:")
-    threads = []
-    for i in range(3):
-        t = Thread(target=simulate_requests, args=(fixed_limiter, f'client_fixed_{i}', 10))
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-
-    print("\nSliding Window Rate Limiter with Threads:")
-    threads = []
-    for i in range(3):
-        t = Thread(target=simulate_requests, args=(sliding_limiter, f'client_sliding_{i}', 10))
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-
-    print("\nSliding Window Counter Rate Limiter with Threads:")
-    threads = []
-    for i in range(3):
-        t = Thread(target=simulate_requests, args=(sliding_counter_limiter, f'client_sliding_counter_{i}', 10))
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
+    for name, limiter in limiters.items():
+        print(f"\n{name.capitalize()} Rate Limiter with Threads:")
+        threads = []
+        for i in range(3):
+            t = Thread(target=simulate_requests, args=(limiter, f'client_{name}_{i}', 10))
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
