@@ -7,11 +7,11 @@ def rankTeams(votes):
     rank_count = {}
 
     for team in teams:
-        rank_count[team] = [0] * num_positions
+        rank_count[team] = [0] * num_positions # {'A': [0,0,0]}
 
     for vote in votes:
         for i, team in enumerate(vote):
-            rank_count[team][i] += 1
+            rank_count[team][i] += 1 # {'A': [5,0,0]}
 
     # returns a tuple of rank in negatives so it would come at top, and if it is same next order alphabetically as in team
     def sort_key(tm):
