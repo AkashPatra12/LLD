@@ -11,7 +11,7 @@ class RateLimiter(ABC):
 class FixedWindowRateLimiter(RateLimiter):
     def __init__(self, max_requests: int, window_size: int):
         self.max_requests = max_requests
-        self.window_size_in_millis = window_size
+        self.window_size = window_size
         self.request_counts = {}
         self.window_start_times = {}
 
@@ -21,7 +21,7 @@ class FixedWindowRateLimiter(RateLimiter):
         self.request_counts.setdefault(client_id, 0)
 
         window_start_time = self.window_start_times[client_id]
-        if current_time - window_start_time >= self.window_size_in_millis:
+        if current_time - window_start_time >= self.window_size:
             self.window_start_times[client_id] = current_time
             self.request_counts[client_id] = 0
 
@@ -31,9 +31,9 @@ class FixedWindowRateLimiter(RateLimiter):
         return False
 
 class SlidingWindowRateLimiter(RateLimiter):
-    def __init__(self, max_requests: int, window_size_in_millis: int):
+    def __init__(self, max_requests: int, window_size: int):
         self.max_requests = max_requests
-        self.window_size_in_millis = window_size_in_millis
+        self.window_size = window_size
         self.request_timestamps = {}
 
     def allow_request(self, client_id: str) -> bool:
@@ -41,7 +41,7 @@ class SlidingWindowRateLimiter(RateLimiter):
         self.request_timestamps.setdefault(client_id, deque())
 
         timestamps = self.request_timestamps[client_id]
-        while timestamps and current_time - timestamps[0] > self.window_size_in_millis:
+        while timestamps and current_time - timestamps[0] > self.window_size:
             timestamps.popleft()
 
         if len(timestamps) < self.max_requests:

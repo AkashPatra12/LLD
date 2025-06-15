@@ -48,11 +48,19 @@ class Board:
         x, y = pos
         return (x % self.width, y % self.height)
 
+    def is_out_of_bounds(self, pos):
+        x, y = pos
+        return x < 0 or x >= self.width or y < 0 or y >= self.height
+
 class FoodSpawner:
     def __init__(self, strategy: IFoodStrategy):
         self.strategy = strategy
 
     def spawn_food(self, board_width, board_height, snake_body):
+        total_cells = board_width * board_height
+        if len(snake_body) == total_cells:
+            self.logger.log_event("Snake hit itself. Game Over!")
+            return None # No space left to place food
         return self.strategy.generate_food(board_width, board_height, snake_body)
 
 class GameLogger:
@@ -110,18 +118,50 @@ class SnakeGameEngine:
         self.snake.set_direction(direction)
 
     def update(self):
+        # self.snake.move()
+        # head = self.board.wrap_position(self.snake.get_head())
+        # self.snake.body[0] = head
+        # if head == self.food:
+        #     self.logger.log_event("Food eaten")
+        #     self.snake.move(grow=True)
+        #     self.food = self.food_spawner.spawn_food(self.board.width, self.board.height, self.snake.body)
+        # self.renderer.render(self.board, self.snake, self.food)
+
+        if not self.running:
+            return
+
         self.snake.move()
-        head = self.board.wrap_position(self.snake.get_head())
-        self.snake.body[0] = head
+        head = self.snake.get_head()
+
+        # Snake hits itself
+        if head in list(self.snake.body)[1:]:
+            self.logger.log_event("Snake hit itself. Game Over!")
+            self.running = False
+            return
+
+        # --- Check boundary death ---
+        if self.board.is_out_of_bounds(head):
+            self.logger.log_event("Snake hit the boundary. Game Over!")
+            self.running = False
+            return
+
+        # --- Check food ---
         if head == self.food:
             self.logger.log_event("Food eaten")
             self.snake.move(grow=True)
             self.food = self.food_spawner.spawn_food(self.board.width, self.board.height, self.snake.body)
+            if self.food is None:
+                self.logger.log_event("Snake filled the board. You win!")
+                self.running = False
+                return
+
+        # --- Render ---
         self.renderer.render(self.board, self.snake, self.food)
 
     def start_game(self, steps=10):
         for _ in range(steps):
             if not self.running:
+                self.logger.log_event("Game stopped.")
                 break
             self.update()
 
